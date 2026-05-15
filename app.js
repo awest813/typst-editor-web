@@ -25,6 +25,7 @@ let galleryObjectUrls = [];   // tracked so we can revoke on rebuild
 // Undo history
 let sourceHistory = [];
 const MAX_HISTORY = 20;
+const STORAGE_UPDATE_INTERVAL_MS = 20000;
 
 // Compiler worker (Typst WASM)
 let worker = null;
@@ -267,7 +268,7 @@ async function initPwaLifecycle() {
   });
 
   window.addEventListener('online', () => showToast('Back online', 'success'));
-  window.addEventListener('offline', () => showToast('Offline mode: cached files remain available', 'info'));
+  window.addEventListener('offline', () => showToast('Offline mode: cached files remain available.', 'info'));
 
   if (btnInstallApp) {
     btnInstallApp.addEventListener('click', async () => {
@@ -298,7 +299,7 @@ async function initPwaLifecycle() {
 
   await refreshStorageIndicator();
   if (!storageUpdateTimer) {
-    storageUpdateTimer = setInterval(refreshStorageIndicator, 20000);
+    storageUpdateTimer = setInterval(refreshStorageIndicator, STORAGE_UPDATE_INTERVAL_MS);
   }
 }
 

@@ -50,7 +50,7 @@ async function staleWhileRevalidate(request, cacheName) {
       return res;
     })
     .catch(() => null);
-  return cached || fetchPromise || Response.error();
+  return cached || (await fetchPromise) || Response.error();
 }
 
 async function networkFirstNavigation(request) {
