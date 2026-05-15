@@ -356,7 +356,7 @@ const EditorPanel = (() => {
     return { getValue: () => ta.value, isDirty: () => ta.value !== original, reset: () => { ta.value = original; } };
   }
 
-  // ── Typst formatting toolbar ──
+  // ── Formatting toolbar ──
 
   function attachToolbar(container, ta) {
     const toolbar = document.createElement('div');
