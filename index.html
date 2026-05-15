@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="application-name" content="LibrePDF">
   <meta name="description" content="Create and edit structured PDF documents in the browser — no server required.">
+  <meta name="theme-color" content="#0071c0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
   <title>LibrePDF</title>
   <link rel="stylesheet" href="app.css">
 </head>
@@ -76,6 +80,27 @@
       </div>
 
       <div id="landing-status" class="landing-status" role="status" aria-live="polite"></div>
+
+      <div id="pwa-install-banner" class="pwa-banner" style="display:none" role="status" aria-live="polite">
+        <div class="pwa-banner-info">
+          <span class="pwa-banner-title">Install LibrePDF</span>
+          <span id="pwa-install-text" class="pwa-banner-text">Install for offline editing and fast startup.</span>
+        </div>
+        <div class="pwa-banner-btns">
+          <button class="btn btn-primary" id="btn-install-app">Install</button>
+          <button class="btn btn-secondary" id="btn-clear-cache">Clear cache</button>
+        </div>
+      </div>
+
+      <div id="pwa-update-banner" class="pwa-banner pwa-banner-update" style="display:none" role="status" aria-live="polite">
+        <div class="pwa-banner-info">
+          <span class="pwa-banner-title">Update available</span>
+          <span class="pwa-banner-text">A newer offline bundle is ready.</span>
+        </div>
+        <div class="pwa-banner-btns">
+          <button class="btn btn-primary" id="btn-apply-update">Refresh now</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -98,6 +123,7 @@
       </div>
       <div class="file-info-row">
         <div id="file-info" class="file-info"></div>
+        <div id="storage-indicator" class="storage-indicator" title=""></div>
         <div class="file-action-btns">
           <button id="btn-add-images" class="add-images-btn" title="Load image files">+ images</button>
           <button id="btn-download-typ" class="add-images-btn" title="Download .typ source">⬇ .typ</button>

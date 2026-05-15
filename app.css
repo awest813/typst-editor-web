@@ -68,6 +68,48 @@ html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; fo
 }
 .landing-status.error { color: var(--danger); }
 
+/* ── PWA install/update banners ───────────────────── */
+.pwa-banner {
+  margin-top: 12px;
+  border: 1px solid var(--primary-light);
+  background: var(--primary-bg);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pwa-banner-update {
+  border-color: #f0c060;
+  background: #fffbf0;
+}
+.pwa-banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pwa-banner-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.pwa-banner-text {
+  font-size: 11px;
+  color: var(--muted);
+}
+.pwa-banner-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pwa-banner-btns .btn {
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
 /* ── Session restore banner ──────────────────────── */
 .session-banner {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
@@ -190,6 +232,15 @@ html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; fo
 }
 .file-action-btns {
   display: flex; gap: 3px; flex-shrink: 0;
+}
+.storage-indicator {
+  font-size: 10px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: 3px;
+  padding: 1px 5px;
+  white-space: nowrap;
 }
 .add-images-btn {
   font-size: 10px; color: var(--primary); background: none;
