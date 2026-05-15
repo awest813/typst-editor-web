@@ -25,6 +25,7 @@ let galleryObjectUrls = [];   // tracked so we can revoke on rebuild
 // Undo history
 let sourceHistory = [];
 const MAX_HISTORY = 20;
+const STORAGE_UPDATE_INTERVAL_MS = 20000;
 
 // Compiler worker (Typst WASM)
 let worker = null;
@@ -105,6 +106,13 @@ const btnZoomOut         = document.getElementById('btn-zoom-out');
 const btnZoomReset       = document.getElementById('btn-zoom-reset');
 const zoomLevelEl        = document.getElementById('zoom-level');
 const btnPresent         = document.getElementById('btn-present');
+const storageIndicator   = document.getElementById('storage-indicator');
+const pwaInstallBanner   = document.getElementById('pwa-install-banner');
+const pwaUpdateBanner    = document.getElementById('pwa-update-banner');
+const pwaInstallText     = document.getElementById('pwa-install-text');
+const btnInstallApp      = document.getElementById('btn-install-app');
+const btnClearCache      = document.getElementById('btn-clear-cache');
+const btnApplyUpdate     = document.getElementById('btn-apply-update');
 
 // ── Worker init ────────────────────────────────────
 
@@ -161,6 +169,137 @@ function setCompileStatus(text) {
   } else {
     compileBanner.style.display = 'none';
     compileStatus.textContent = '';
+  }
+}
+
+// ── PWA shell / offline lifecycle ───────────────────
+
+let swRegistration = null;
+let deferredInstallPrompt = null;
+let storageUpdateTimer = null;
+
+function showInstallBanner(show, text = '') {
+  if (!pwaInstallBanner) return;
+  pwaInstallBanner.style.display = show ? '' : 'none';
+  if (text) pwaInstallText.textContent = text;
+}
+
+function showUpdateBanner(show) {
+  if (!pwaUpdateBanner) return;
+  pwaUpdateBanner.style.display = show ? '' : 'none';
+}
+
+async function refreshStorageIndicator() {
+  if (!storageIndicator) return;
+  if (!navigator.storage?.estimate) {
+    storageIndicator.textContent = '';
+    storageIndicator.title = '';
+    return;
+  }
+
+  try {
+    const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+    if (!quota) {
+      storageIndicator.textContent = '';
+      storageIndicator.title = '';
+      return;
+    }
+    const usedMB = usage / (1024 * 1024);
+    const quotaMB = quota / (1024 * 1024);
+    const pct = (usage / quota) * 100;
+    storageIndicator.textContent = `Storage ${pct.toFixed(1)}%`;
+    storageIndicator.title = `${usedMB.toFixed(1)} MB used of ${quotaMB.toFixed(1)} MB browser quota`;
+  } catch (_) {
+    storageIndicator.textContent = '';
+    storageIndicator.title = '';
+  }
+}
+
+async function clearOfflineCache() {
+  try {
+    if (!('caches' in window)) {
+      showToast('Cache API is unavailable in this browser', 'error');
+      return;
+    }
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    showToast('Offline cache cleared', 'success');
+    await refreshStorageIndicator();
+  } catch (err) {
+    showToast('Cache clear failed: ' + err.message, 'error');
+  }
+}
+
+async function initPwaLifecycle() {
+  if (!('serviceWorker' in navigator)) return;
+
+  try {
+    swRegistration = await navigator.serviceWorker.register('./sw.js');
+
+    if (swRegistration.waiting) showUpdateBanner(true);
+
+    swRegistration.addEventListener('updatefound', () => {
+      const nw = swRegistration.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          showUpdateBanner(true);
+        }
+      });
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
+  } catch (err) {
+    console.warn('Service worker registration failed:', err);
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showInstallBanner(true, 'Install for offline editing, PDF reading, and slideshow playback.');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    showInstallBanner(false);
+    showToast('LibrePDF installed', 'success');
+  });
+
+  window.addEventListener('online', () => showToast('Back online', 'success'));
+  window.addEventListener('offline', () => showToast('Offline mode: cached files remain available.', 'info'));
+
+  if (btnInstallApp) {
+    btnInstallApp.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) {
+        showInstallBanner(true, 'Use your browser menu to install this app on this device.');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      try { await deferredInstallPrompt.userChoice; } catch (_) {}
+      deferredInstallPrompt = null;
+      showInstallBanner(false);
+    });
+  }
+
+  if (btnClearCache) {
+    btnClearCache.addEventListener('click', clearOfflineCache);
+  }
+
+  if (btnApplyUpdate) {
+    btnApplyUpdate.addEventListener('click', () => {
+      if (swRegistration?.waiting) {
+        swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+
+  await refreshStorageIndicator();
+  if (!storageUpdateTimer) {
+    storageUpdateTimer = setInterval(refreshStorageIndicator, STORAGE_UPDATE_INTERVAL_MS);
   }
 }
 
@@ -1299,6 +1438,7 @@ function saveTextSession() {
     localStorage.setItem(SESSION_KEY, JSON.stringify({
       source, filename, savedAt: Date.now(), imageCount: imageNames.length,
     }));
+    refreshStorageIndicator();
   } catch (e) {
     if (e?.name === 'QuotaExceededError') showToast('Auto-save failed: browser storage full. Download your .typ to avoid losing work.', 'error');
   }
@@ -1311,6 +1451,7 @@ async function saveImagesToIDB() {
     const store = tx.objectStore('images');
     store.clear();
     for (const [path, buf] of Object.entries(imageFiles)) store.put(buf, path);
+    refreshStorageIndicator();
   } catch (_) {}
 }
 
@@ -1376,6 +1517,7 @@ async function clearIDB() {
   try {
     const d = await openIDB();
     d.transaction('images', 'readwrite').objectStore('images').clear();
+    refreshStorageIndicator();
   } catch (_) {}
 }
 
@@ -1398,6 +1540,7 @@ function getTextSession() {
 
 function clearTextSession() {
   localStorage.removeItem(SESSION_KEY);
+  refreshStorageIndicator();
 }
 
 function timeAgo(ms) {
@@ -1904,6 +2047,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── Init ───────────────────────────────────────────
+initPwaLifecycle();
 setupLanding();
 btnDlTyp.addEventListener('click', downloadTyp);
 btnDlPdf.addEventListener('click', downloadPdf);

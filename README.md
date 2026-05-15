@@ -27,6 +27,9 @@ app.js              ← main module: state, UI, session persistence, PDF renderi
   ├─ editor-panel.js← property editor UI for all element types
   └─ templates.js   ← document template definitions and source generators
 typst-worker.js     ← Web Worker: Typst WASM compiler + font loading
+sw.js               ← Service Worker: offline shell + runtime CDN caching
+manifest.webmanifest← PWA manifest (install metadata and icons)
+icons/*.svg         ← App icons used by the PWA manifest
 ```
 
 ### Key flows
@@ -82,6 +85,38 @@ npx serve .
 Then visit `http://localhost:8080`.
 
 > **Note:** The first compile downloads ~15 MB of fonts from CDN and takes 20–40 s. Subsequent compiles are fast because fonts are cached in the worker's memory for the session.
+> **PWA note:** Service worker and install prompt behavior require serving over `http://localhost` or `https` (not `file://`).
+
+---
+
+## PWA / offline behavior
+
+- LibrePDF now exposes an install prompt when supported (`beforeinstallprompt`).
+- `sw.js` caches the app shell for offline startup and keeps CDN dependencies in a runtime cache.
+- Update handling uses a refresh prompt when a new service worker is waiting.
+- Storage usage is surfaced in the editor header via the `Storage x%` indicator.
+- The landing install banner includes a **Clear cache** action to recover quota pressure.
+
+---
+
+## CI checks
+
+GitHub Actions runs a lightweight baseline validation workflow:
+
+- Manifest JSON validation (`python3 -m json.tool manifest.webmanifest`)
+- JavaScript syntax checks (`node --check ...`)
+
+You can run the same locally:
+
+```bash
+python3 -m json.tool manifest.webmanifest >/dev/null
+node --check app.js
+node --check parser.js
+node --check editor-panel.js
+node --check templates.js
+node --check typst-worker.js
+node --check sw.js
+```
 
 ---
 
@@ -101,6 +136,9 @@ Run through this list before merging a PR that touches app logic:
 - [ ] ⬇ .typ and ⬇ PDF downloads produce valid files.
 - [ ] "Switch File…" modal offers download before discarding unsaved work.
 - [ ] Tab-only keyboard navigation reaches all interactive controls.
+- [ ] Install banner appears on supported browsers; install or dismiss behavior works.
+- [ ] Reload works offline after one successful online load.
+- [ ] Update banner appears after a service worker update and refresh applies it.
 
 ---
 

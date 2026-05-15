@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "copilot/**"
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate web manifest JSON
+        run: python3 -m json.tool manifest.webmanifest >/dev/null
+
+      - name: JavaScript syntax check
+        run: |
+          node --check app.js
+          node --check parser.js
+          node --check editor-panel.js
+          node --check templates.js
+          node --check typst-worker.js
+          node --check sw.js
