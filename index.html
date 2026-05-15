@@ -133,6 +133,8 @@
         <span id="zoom-level" class="zoom-level">100%</span>
         <button id="btn-zoom-in" class="zoom-btn" title="Zoom in (Ctrl++)">+</button>
         <button id="btn-zoom-reset" class="zoom-btn zoom-btn-reset" title="Reset zoom (Ctrl+0)">↺</button>
+        <div class="zoom-sep"></div>
+        <button id="btn-present" class="zoom-btn zoom-btn-present" title="Presentation mode (Ctrl+Shift+P)" disabled>⧉ Present</button>
       </div>
 
       <div id="svg-container"></div>
@@ -168,6 +170,22 @@
         <button class="btn btn-danger" id="btn-modal-continue">Open without saving</button>
         <button class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── Presentation / Slideshow overlay ──────────── -->
+  <div id="presentation-overlay" class="presentation-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Presentation mode">
+    <div class="presentation-canvas-wrap">
+      <canvas id="presentation-canvas" class="presentation-canvas"></canvas>
+    </div>
+    <nav class="presentation-controls">
+      <button id="btn-pres-prev" class="pres-nav-btn" title="Previous slide (← or Backspace)" aria-label="Previous slide">&#8592;</button>
+      <span id="pres-page-counter" class="pres-page-counter">1 / 1</span>
+      <button id="btn-pres-next" class="pres-nav-btn" title="Next slide (→ or Space)" aria-label="Next slide">&#8594;</button>
+    </nav>
+    <div class="presentation-top-bar">
+      <button id="btn-pres-fullscreen" class="pres-icon-btn" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen">⛶</button>
+      <button id="btn-pres-exit" class="pres-icon-btn" title="Exit presentation (Esc)" aria-label="Exit presentation">✕</button>
     </div>
   </div>
 
