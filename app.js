@@ -114,6 +114,19 @@ const btnInstallApp      = document.getElementById('btn-install-app');
 const btnClearCache      = document.getElementById('btn-clear-cache');
 const btnApplyUpdate     = document.getElementById('btn-apply-update');
 
+function makeKeyboardActivatable(el, onActivate, ariaLabel) {
+  if (!el) return;
+  el.tabIndex = 0;
+  el.setAttribute('role', 'button');
+  if (ariaLabel) el.setAttribute('aria-label', ariaLabel);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar' || e.code === 'Space') {
+      e.preventDefault();
+      onActivate(e);
+    }
+  });
+}
+
 // ── Worker init ────────────────────────────────────
 
 function initWorker() {
@@ -433,6 +446,7 @@ function buildTemplatePicker() {
         <div class="tpl-desc">${tpl.description}</div>
       </div>`;
     card.addEventListener('click', () => openTemplateForm(tpl.id));
+    makeKeyboardActivatable(card, () => openTemplateForm(tpl.id), `Create from template ${tpl.name}`);
     picker.appendChild(card);
   }
 }
@@ -813,6 +827,7 @@ function buildTree() {
   docItem.appendChild(docBadge);
   docItem.appendChild(docLabel);
   docItem.addEventListener('click', () => showDocumentSettings());
+  makeKeyboardActivatable(docItem, () => showDocumentSettings(), 'Open document settings');
   treeContainer.appendChild(docItem);
 
   // Images item
@@ -833,6 +848,7 @@ function buildTree() {
     imgTreeItem.appendChild(countBadge);
   }
   imgTreeItem.addEventListener('click', () => showImageManager());
+  makeKeyboardActivatable(imgTreeItem, () => showImageManager(), 'Open image manager');
   treeContainer.appendChild(imgTreeItem);
 
   const sections = new Map();
@@ -891,10 +907,15 @@ function buildTree() {
       e.stopPropagation();
       header.classList.toggle('collapsed');
     });
+    makeKeyboardActivatable(arrow, (e) => {
+      e.stopPropagation();
+      header.classList.toggle('collapsed');
+    }, `Toggle section ${sec.name}`);
     // Header (section name) click → scroll to page only
     header.addEventListener('click', () => {
       scrollToPage(sec.pageNum);
     });
+    makeKeyboardActivatable(header, () => scrollToPage(sec.pageNum), `Scroll to section ${sec.name}`);
 
     sectionDiv.appendChild(header);
 
@@ -936,6 +957,7 @@ function buildTree() {
         e.stopPropagation();
         selectElement(el, item);
       });
+      makeKeyboardActivatable(item, () => selectElement(el, item), `Select ${el.title || el.type}`);
       items.appendChild(item);
     }
 
@@ -946,6 +968,7 @@ function buildTree() {
       e.stopPropagation();
       showInsertForm(sec.pageNum);
     });
+    makeKeyboardActivatable(addItem, () => showInsertForm(sec.pageNum), `Add element to section ${sec.name}`);
     items.appendChild(addItem);
 
     sectionDiv.appendChild(items);
