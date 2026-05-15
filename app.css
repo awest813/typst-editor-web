@@ -719,3 +719,74 @@ html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; fo
   margin: 12px 0 6px; padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
+
+/* ── Zoom bar present button ─────────────────────── */
+.zoom-sep {
+  width: 1px; height: 18px; background: var(--border);
+  margin: 0 4px; flex-shrink: 0;
+}
+.zoom-btn-present {
+  width: auto; padding: 0 8px;
+  font-size: 11px; font-weight: 600;
+  color: var(--primary);
+  border-color: var(--primary-light);
+}
+.zoom-btn-present:hover:not(:disabled) {
+  background: var(--primary-bg); color: var(--primary); border-color: var(--primary);
+}
+.zoom-btn-present:disabled { opacity: 0.35; cursor: default; }
+
+/* ── Presentation overlay ────────────────────────── */
+.presentation-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: #0d0d0d;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  user-select: none;
+}
+.presentation-canvas-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  width: 100%; overflow: hidden; padding: 12px 12px 0;
+}
+.presentation-canvas {
+  display: block;
+  max-width: 100%; max-height: 100%;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  border-radius: 2px;
+}
+.presentation-controls {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 20px;
+  flex-shrink: 0;
+}
+.pres-nav-btn {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: white; font-size: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+.pres-nav-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.5);
+}
+.pres-nav-btn:disabled { opacity: 0.25; cursor: default; }
+.pres-page-counter {
+  min-width: 70px; text-align: center;
+  font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7);
+  letter-spacing: 0.5px;
+}
+.presentation-top-bar {
+  position: absolute; top: 12px; right: 16px;
+  display: flex; gap: 8px;
+}
+.pres-icon-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.75); font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.pres-icon-btn:hover { background: rgba(255,255,255,0.2); color: white; }

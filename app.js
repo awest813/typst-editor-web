@@ -104,6 +104,7 @@ const btnZoomIn          = document.getElementById('btn-zoom-in');
 const btnZoomOut         = document.getElementById('btn-zoom-out');
 const btnZoomReset       = document.getElementById('btn-zoom-reset');
 const zoomLevelEl        = document.getElementById('zoom-level');
+const btnPresent         = document.getElementById('btn-present');
 
 // ── Worker init ────────────────────────────────────
 
@@ -124,6 +125,7 @@ function initWorker() {
     if (msg.type === 'pdf-result') {
       currentPdfBytes = msg.pdf; // keep as ArrayBuffer — Uint8Array view is detached by PDF.js
       btnDlPdf.disabled = false;
+      btnPresent.disabled = false;
       setCompileStatus('');
       compileBanner.style.display = 'none';
       errorPanel.style.display = 'none';
@@ -507,6 +509,7 @@ function showEditor() {
   editContainer.innerHTML = '<p class="placeholder">Select an element from the tree to edit its properties.</p>';
   errorPanel.style.display = 'none';
   btnDlPdf.disabled = true;
+  btnPresent.disabled = true;
   document.getElementById('zoom-bar').style.display = '';
   if (previewPlaceholder) previewPlaceholder.style.display = '';
 }
@@ -1723,6 +1726,140 @@ function showToast(message, type = 'info') {
   }
 }
 
+// ── Presentation / Slideshow mode ─────────────────
+
+let presPageIndex   = 0;   // 0-based current slide index
+let presPages       = [];  // cached rendered canvases
+let presRendering   = false;
+
+const presOverlay   = document.getElementById('presentation-overlay');
+const presCanvas    = document.getElementById('presentation-canvas');
+const presCounter   = document.getElementById('pres-page-counter');
+const btnPresPrev   = document.getElementById('btn-pres-prev');
+const btnPresNext   = document.getElementById('btn-pres-next');
+const btnPresExit   = document.getElementById('btn-pres-exit');
+const btnPresFs     = document.getElementById('btn-pres-fullscreen');
+
+async function enterPresentationMode() {
+  if (!currentPdfBytes || presRendering) return;
+  presRendering = true;
+  presPages = [];
+
+  // High-DPI aware scale: target ~90% of the smaller viewport dimension per slide
+  const vw = window.screen.width || window.innerWidth;
+  const vh = window.screen.height || window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+
+  try {
+    const loadTask = pdfjsLib.getDocument({
+      data: new Uint8Array(
+        currentPdfBytes instanceof ArrayBuffer
+          ? currentPdfBytes
+          : currentPdfBytes.buffer
+      ).slice(),
+      disableRange: true,
+      disableStream: true,
+    });
+    const pdf = await loadTask.promise;
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      // Scale so the page fits inside vw × vh at 90% utilisation
+      const vp0 = page.getViewport({ scale: 1 });
+      const scale = Math.min((vw * 0.90) / vp0.width, (vh * 0.88) / vp0.height) * dpr;
+      const vp = page.getViewport({ scale });
+
+      const c = document.createElement('canvas');
+      c.width  = vp.width;
+      c.height = vp.height;
+      c.style.width  = (vp.width  / dpr) + 'px';
+      c.style.height = (vp.height / dpr) + 'px';
+      await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      page.cleanup();
+      presPages.push(c);
+    }
+    pdf.destroy();
+  } catch (err) {
+    showToast('Presentation render error: ' + err.message, 'error');
+    presRendering = false;
+    return;
+  }
+
+  presRendering = false;
+  presPageIndex = 0;
+  presOverlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  presShowSlide(0);
+}
+
+function presShowSlide(idx) {
+  if (presPages.length === 0) return;
+  presPageIndex = Math.max(0, Math.min(idx, presPages.length - 1));
+
+  // Swap canvas content
+  const src = presPages[presPageIndex];
+  presCanvas.width  = src.width;
+  presCanvas.height = src.height;
+  presCanvas.style.width  = src.style.width;
+  presCanvas.style.height = src.style.height;
+  presCanvas.getContext('2d').drawImage(src, 0, 0);
+
+  presCounter.textContent = `${presPageIndex + 1} / ${presPages.length}`;
+  btnPresPrev.disabled = presPageIndex === 0;
+  btnPresNext.disabled = presPageIndex === presPages.length - 1;
+}
+
+function exitPresentationMode() {
+  presOverlay.style.display = 'none';
+  document.body.style.overflow = '';
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+
+btnPresPrev.addEventListener('click', () => presShowSlide(presPageIndex - 1));
+btnPresNext.addEventListener('click', () => presShowSlide(presPageIndex + 1));
+btnPresExit.addEventListener('click', exitPresentationMode);
+
+btnPresFs.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    presOverlay.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+});
+
+// Update fullscreen icon
+document.addEventListener('fullscreenchange', () => {
+  btnPresFs.title = document.fullscreenElement
+    ? 'Exit fullscreen (F)'
+    : 'Toggle fullscreen (F)';
+  btnPresFs.textContent = document.fullscreenElement ? '⊡' : '⛶';
+});
+
+document.addEventListener('keydown', (e) => {
+  if (presOverlay.style.display === 'none') return;
+  // Don't hijack Space if a button inside the overlay has focus (allow native click)
+  const spaceOnButton = e.key === ' ' && document.activeElement?.tagName === 'BUTTON';
+  if (e.key === 'ArrowRight' || (!spaceOnButton && e.key === ' ') || e.key === 'ArrowDown') {
+    e.preventDefault();
+    presShowSlide(presPageIndex + 1);
+  } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    presShowSlide(presPageIndex - 1);
+  } else if (e.key === 'Escape') {
+    exitPresentationMode();
+  } else if (e.key === 'f' || e.key === 'F') {
+    btnPresFs.click();
+  } else if (e.key === 'Home') {
+    e.preventDefault();
+    presShowSlide(0);
+  } else if (e.key === 'End') {
+    e.preventDefault();
+    presShowSlide(presPages.length - 1);
+  }
+});
+
+btnPresent.addEventListener('click', enterPresentationMode);
+
 // ── Zoom controls ──────────────────────────────────
 function setZoom(z) {
   previewZoom = Math.max(0.25, Math.min(3.0, z));
@@ -1746,6 +1883,7 @@ previewPanel.addEventListener('wheel', (e) => {
 // ── Keyboard shortcuts ─────────────────────────────
 document.addEventListener('keydown', (e) => {
   if (appEl.style.display === 'none') return;
+  if (presOverlay.style.display !== 'none') return; // let presentation handler take over
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
     e.preventDefault();
     undoEdit();
@@ -1758,6 +1896,10 @@ document.addEventListener('keydown', (e) => {
   }
   if ((e.ctrlKey || e.metaKey) && e.key === '0') {
     e.preventDefault(); setZoom(1.0);
+  }
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+    e.preventDefault();
+    if (!btnPresent.disabled) enterPresentationMode();
   }
 });
 
@@ -1772,6 +1914,7 @@ document.getElementById('btn-dismiss-error').addEventListener('click', () => {
   errorPanel.style.display = 'none';
 });
 btnDlPdf.disabled = true;
+btnPresent.disabled = true;
 
 // ── Drag & drop images onto the app ────────────────
 let dragCounter = 0;
