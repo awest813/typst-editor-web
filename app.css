@@ -378,7 +378,7 @@ html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; fo
 }
 .field-hint-block strong { color: var(--ink); }
 
-/* ── Typst Formatting Toolbar ────────────────────── */
+/* ── Formatting Toolbar ──────────────────────────── */
 .text-toolbar {
   display: flex; flex-wrap: wrap; align-items: center;
   gap: 2px; padding: 4px 6px;

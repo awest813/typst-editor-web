@@ -1,6 +1,6 @@
 /**
- * Typst Visual Element Editor — static/browser version.
- * No server. Compiles via typst WASM worker, renders via PDF.js.
+ * LibrePDF — visual PDF document editor, static/browser version.
+ * No server. Compiles Typst source via WASM worker, renders via PDF.js.
  */
 
 // ── PDF.js (ESM) ────────────────────────────────────
@@ -26,7 +26,7 @@ let galleryObjectUrls = [];   // tracked so we can revoke on rebuild
 let sourceHistory = [];
 const MAX_HISTORY = 20;
 
-// Typst WASM worker
+// Compiler worker (Typst WASM)
 let worker = null;
 
 // ── Document var helpers ────────────────────────────
@@ -1272,13 +1272,14 @@ function dlBlob(blob, name) {
 // Source + filename → localStorage  (fast, text-only)
 // Images            → IndexedDB     (handles binary, larger quota)
 
-const SESSION_KEY = 'typst-editor-session';
+const SESSION_KEY        = 'librepdf-session';
+const SESSION_KEY_LEGACY = 'typst-editor-session'; // kept for one-time migration
 let idb = null;
 
 async function openIDB() {
   if (idb) return idb;
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('typst-editor', 2);
+    const req = indexedDB.open('librepdf', 2);
     req.onupgradeneeded = (e) => {
       const d = e.target.result;
       if (!d.objectStoreNames.contains('images')) d.createObjectStore('images');
@@ -1313,18 +1314,59 @@ async function saveImagesToIDB() {
 async function loadImagesFromIDB() {
   try {
     const d = await openIDB();
-    return await new Promise((resolve) => {
+    const result = await new Promise((resolve) => {
       const tx = d.transaction('images', 'readonly');
-      const result = {};
+      const r = {};
       const req = tx.objectStore('images').openCursor();
       req.onsuccess = (e) => {
         const cur = e.target.result;
-        if (cur) { result[cur.key] = cur.value; cur.continue(); }
-        else resolve(result);
+        if (cur) { r[cur.key] = cur.value; cur.continue(); }
+        else resolve(r);
       };
       req.onerror = () => resolve({});
     });
+
+    // If the new DB is empty, attempt a one-time migration from the legacy DB.
+    if (Object.keys(result).length === 0) {
+      const legacy = await loadImagesFromLegacyIDB();
+      if (Object.keys(legacy).length > 0) {
+        // Persist migrated data into the new DB so future loads are instant.
+        try {
+          const tx = d.transaction('images', 'readwrite');
+          const store = tx.objectStore('images');
+          for (const [path, buf] of Object.entries(legacy)) store.put(buf, path);
+        } catch (_) {}
+        // Best-effort cleanup of the old database.
+        try { indexedDB.deleteDatabase('typst-editor'); } catch (_) {}
+        return legacy;
+      }
+    }
+
+    return result;
   } catch (_) { return {}; }
+}
+
+// One-time migration helper: reads image data from the legacy 'typst-editor' IDB.
+async function loadImagesFromLegacyIDB() {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('typst-editor', 2);
+      req.onsuccess = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('images')) { d.close(); resolve({}); return; }
+        const r = {};
+        const tx = d.transaction('images', 'readonly');
+        const cur = tx.objectStore('images').openCursor();
+        cur.onsuccess = (ev) => {
+          const c = ev.target.result;
+          if (c) { r[c.key] = c.value; c.continue(); }
+          else { d.close(); resolve(r); }
+        };
+        cur.onerror = () => { d.close(); resolve({}); };
+      };
+      req.onerror = () => resolve({});
+    } catch (_) { resolve({}); }
+  });
 }
 
 async function clearIDB() {
@@ -1336,7 +1378,15 @@ async function clearIDB() {
 
 function getTextSession() {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
+    // Try the current key first; fall back to legacy key and migrate transparently.
+    let raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      raw = localStorage.getItem(SESSION_KEY_LEGACY);
+      if (raw) {
+        localStorage.setItem(SESSION_KEY, raw);
+        localStorage.removeItem(SESSION_KEY_LEGACY);
+      }
+    }
     if (!raw) return null;
     const s = JSON.parse(raw);
     return (s?.source && s?.filename) ? s : null;

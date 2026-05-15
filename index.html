@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Typst Element Editor</title>
+  <meta name="application-name" content="LibrePDF">
+  <meta name="description" content="Create and edit structured PDF documents in the browser — no server required.">
+  <title>LibrePDF</title>
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -11,11 +13,11 @@
   <!-- ── Landing overlay ───────────────────────────── -->
   <div id="landing" class="landing-overlay">
     <div class="landing-card">
-      <h1>Typst Element Editor</h1>
-      <p class="landing-sub">Edit and create structured Typst documents in the browser — no server required.</p>
+      <h1>LibrePDF</h1>
+      <p class="landing-sub">Create and edit structured PDF documents in the browser — no server required.</p>
 
       <!-- Session restore banner (shown by JS when a saved session exists) -->
-      <div id="session-banner" class="session-banner" style="display:none">
+      <div id="session-banner" class="session-banner" style="display:none" role="status" aria-live="polite">
         <div class="session-banner-info">
           <div class="session-banner-top">
             <span class="session-banner-label">Unsaved recovery</span>
@@ -73,7 +75,7 @@
         </div>
       </div>
 
-      <div id="landing-status" class="landing-status"></div>
+      <div id="landing-status" class="landing-status" role="status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -106,12 +108,12 @@
     </aside>
 
     <main id="preview-panel">
-      <div id="compile-banner" class="compile-banner" style="display:none">
+      <div id="compile-banner" class="compile-banner" style="display:none" role="status" aria-live="polite">
         <span id="compile-status">Compiling…</span>
       </div>
 
       <!-- Persistent compile error panel -->
-      <div id="compile-error-panel" class="compile-error-panel" style="display:none">
+      <div id="compile-error-panel" class="compile-error-panel" style="display:none" role="alert" aria-live="assertive">
         <div class="compile-error-header">
           <span>Compile Error</span>
           <button id="btn-dismiss-error" class="compile-error-dismiss">✕</button>
@@ -147,7 +149,7 @@
     </aside>
   </div>
 
-  <div id="toast-container"></div>
+  <div id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
 
   <!-- ── Unsaved-changes modal ────────────────────── -->
   <div id="unsaved-modal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="unsaved-modal-title">
