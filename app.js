@@ -1729,7 +1729,6 @@ function showToast(message, type = 'info') {
 // ── Presentation / Slideshow mode ─────────────────
 
 let presPageIndex   = 0;   // 0-based current slide index
-let preTotalPages   = 0;
 let presPages       = [];  // cached rendered canvases
 let presRendering   = false;
 
@@ -1762,7 +1761,6 @@ async function enterPresentationMode() {
       disableStream: true,
     });
     const pdf = await loadTask.promise;
-    preTotalPages = pdf.numPages;
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
@@ -1839,7 +1837,9 @@ document.addEventListener('fullscreenchange', () => {
 
 document.addEventListener('keydown', (e) => {
   if (presOverlay.style.display === 'none') return;
-  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown') {
+  // Don't hijack Space if a button inside the overlay has focus (allow native click)
+  const spaceOnButton = e.key === ' ' && document.activeElement?.tagName === 'BUTTON';
+  if (e.key === 'ArrowRight' || (!spaceOnButton && e.key === ' ') || e.key === 'ArrowDown') {
     e.preventDefault();
     presShowSlide(presPageIndex + 1);
   } else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'ArrowUp') {
